@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>低碳数字植物园 - 内容创作中台</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #aff881, #84fcba);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .glass-input::placeholder { color: #94a3b8; opacity: 0.7; }
+        .glass-input option { background: #0f172a; color: white; }
+        
+        .prose h1, .prose h2, .prose h3 { color: #f8fafc; font-weight: 700; margin-top: 1em; }
+        .prose p { color: #cbd5e1; line-height: 1.8; margin-bottom: 1em; }
+        .prose strong { color: #818cf8; }
+        .prose ul { list-style-type: disc; padding-left: 1.5em; color: #cbd5e1; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .prose th, .prose td { border: 1px solid #475569; padding: 8px; text-align: left; }
+        .prose th { background: #1e293b; color: #818cf8; }
+        
+        /* 上传框样式 */
+        .upload-box {
+            border: 2px dashed #475569;
+            transition: all 0.3s;
+            background: rgba(15, 23, 42, 0.3);
+        }
+        .upload-box:hover {
+            border-color: #818cf8;
+            background: rgba(129, 140, 248, 0.1);
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body class="font-sans min-h-screen p-4 md:p-6 bg-slate-900">
+
+    <div id="app" class="max-w-7xl mx-auto">
+        
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight"><span class="gradient-text">低碳数字植物园</span> 内容创作中台</h1>
+                <p class="text-slate-400 text-xs mt-1">DeepSeek / Qwen · RAG 文档解析 · 智能运营</p>
+            </div>
+            <div class="w-64 relative">
+                <input :type="showKey ? 'text' : 'password'" v-model="apiKey" placeholder="在此粘贴 API Key" class="w-full glass-input rounded-lg pl-3 pr-10 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                <button @click="showKey = !showKey" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-white">
+                    {{ showKey ? '🙈' : '👁️' }}
+                </button>
+            </div>
+        </header>
+
+        <div class="glass rounded-2xl p-6 shadow-xl mb-6">
+            <h2 class="text-lg font-bold text-white mb-4 flex items-center">🎛️ 基础设置 & 资料导入</h2>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                
+                <div class="md:col-span-6 space-y-4">
+                    <div>
+                        <label class="text-xs font-semibold text-indigo-300 uppercase block mb-2">💡 核心主题</label>
+                        <textarea v-model="subject" rows="2" placeholder="输入主题，例如：城市蓝绿空间研究..." class="w-full glass-input rounded-lg px-4 py-8 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
+                    </div>
+                </div>
+
+                <div class="md:col-span-3 space-y-4">
+                    <div>
+                        <label class="text-xs font-semibold text-indigo-300 uppercase block mb-1">AI 模型</label>
+                        <select v-model="selectedModel" class="w-full glass-input rounded-lg px-3 py-2 text-sm">
+                            <option v-for="m in models" :value="m">{{ m }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-indigo-300 uppercase block mb-1">风格参考</label>
+                        <select v-model="selectedStyle" class="w-full glass-input rounded-lg px-3 py-2 text-sm">
+                            <option v-for="s in styles" :value="s">{{ s }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="md:col-span-3 space-y-5">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-indigo-300 font-semibold uppercase">预期时长</span>
+                            <span class="bg-pink-600 px-2 rounded text-white">{{ videoLength }} min</span>
+                        </div>
+                        <input type="range" v-model.number="videoLength" min="0.5" max="5.0" step="0.5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-indigo-300 font-semibold uppercase">创造力</span>
+                            <span class="bg-indigo-600 px-2 rounded text-white">{{ creativity }}</span>
+                        </div>
+                        <input type="range" v-model.number="creativity" min="0" max="1.5" step="0.1" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部独立横排：参考资料上传 -->
+            <div class="mt-4">
+                <label class="text-xs font-semibold text-pink-400 uppercase block mb-2">📂 参考资料 (Word/PDF/TXT)</label>
+                <div class="upload-box rounded-xl p-4 text-center cursor-pointer relative w-full" @click="$refs.fileInput.click()">
+                    <input type="file" ref="fileInput" @change="handleFileChange" class="hidden" accept=".docx,.pdf,.txt">
+                    <div v-if="!selectedFile">
+                        <span class="text-xl block mb-1">📄</span>
+                        <span class="text-sm text-slate-300">点击或拖拽上传参考资料，自动参与 RAG 解析</span>
+                    </div>
+                    <div v-else class="flex flex-wrap items-center justify-center gap-3">
+                        <span class="text-lg">✅</span>
+                        <span class="text-sm text-indigo-200 font-bold truncate max-w-[260px]">{{ selectedFile.name }}</span>
+                        <button @click.stop="selectedFile = null" class="text-xs text-red-400 hover:text-red-300 underline">移除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <div class="lg:col-span-4 space-y-4">
+                <div class="glass rounded-2xl p-5 shadow-lg h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-white">🔥 智能选题</h3>
+                        <button @click="generateTitles" :disabled="loading" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded transition disabled:opacity-50">
+                            {{ loading ? '分析中...' : '生成爆款标题' }}
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 mb-4 max-h-32 overflow-y-auto">
+                        <p class="font-bold text-slate-300 mb-1">实时热点参考：</p>
+                        <ul class="list-none space-y-1">
+                            <li v-for="(t,i) in trends" :key="i" class="truncate">🔥 {{ t }}</li>
+                        </ul>
+                    </div>
+
+                    <div class="flex-grow space-y-2 overflow-y-auto max-h-[400px]">
+                        <div v-if="titleList.length === 0" class="text-center text-slate-500 py-10 text-sm">
+                            👈 导入文档/输入主题<br>点击生成标题
+                        </div>
+                        <div v-for="(title, idx) in titleList" :key="idx" class="group bg-slate-800/40 hover:bg-slate-700 border border-slate-700 rounded-lg p-3 transition flex justify-between items-start">
+                            <span class="text-sm text-slate-200 leading-relaxed">{{ title }}</span>
+                            <button @click="copyTitle(title)" class="ml-2 text-slate-500 hover:text-green-400 opacity-0 group-hover:opacity-100 transition" title="使用此标题">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" /><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8">
+                <div class="glass rounded-2xl p-6 shadow-lg h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-white">✍️ 深度内容创作</h3>
+                        <div class="flex gap-2">
+                            <select v-model="contentType" class="glass-input rounded px-2 py-1 text-xs">
+                                <option value="微信公众号文章">公众号文章</option>
+                                <option value="视频脚本">视频脚本</option>
+                            </select>
+                            <button @click="generateContent" :disabled="contentLoading" class="bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold py-1.5 px-4 rounded transition disabled:opacity-50">
+                                {{ contentLoading ? '创作中...' : '开始生成' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-xs font-semibold text-slate-400 uppercase block mb-1">最终标题</label>
+                        <input type="text" v-model="targetTitle" placeholder="在此输入标题，或从左侧选择..." class="w-full glass-input rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none">
+                    </div>
+
+                    <div class="flex-grow bg-slate-900/50 rounded-xl p-6 overflow-y-auto min-h-[400px] max-h-[600px]">
+                        <div v-if="contentLoading" class="flex flex-col items-center justify-center h-full text-indigo-400">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mb-4"></div>
+                            <p class="text-sm animate-pulse">Agent 正在读取文档与样本，全力创作中...</p>
+                        </div>
+                        <div v-else-if="!finalContent" class="flex flex-col items-center justify-center h-full text-slate-600">
+                            <p>内容生成区为空</p>
+                        </div>
+                        <div v-else class="prose prose-invert max-w-none text-sm" v-html="parsedContent"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const BACKEND_URL = "http://127.0.0.1:8000"; 
+                
+                const showKey = ref(false);
+                const apiKey = ref('');
+                const subject = ref('');
+                const styles = ref([]);
+                const models = ref(['DeepSeek V3', 'Qwen Max']); 
+                const trends = ref(['Loading trends...']);
+                const selectedStyle = ref('');
+                const selectedModel = ref('DeepSeek V3');
+                const videoLength = ref(1.0);
+                const creativity = ref(0.7);
+                const contentType = ref('微信公众号文章');
+                
+                const loading = ref(false);
+                const generatedTitles = ref('');
+                const targetTitle = ref('');
+                const contentLoading = ref(false);
+                const finalContent = ref('');
+                const selectedFile = ref(null);
+
+                onMounted(async () => {
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/config`);
+                        if(res.ok) {
+                            const data = await res.json();
+                            styles.value = data.styles;
+                            trends.value = data.trends;
+                            models.value = data.models;
+                            if(styles.value.length > 0) selectedStyle.value = styles.value[0];
+                            if(models.value.length > 0) selectedModel.value = models.value[0];
+                        }
+                    } catch (e) {
+                        console.error("Config load failed", e);
+                    }
+                });
+
+                const titleList = computed(() => {
+                    return generatedTitles.value ? generatedTitles.value.split('\n').filter(t => t.trim()) : [];
+                });
+                const parsedContent = computed(() => finalContent.value ? marked.parse(finalContent.value) : '');
+
+                const copyTitle = (t) => {
+                    targetTitle.value = t.replace(/^\d+\.\s*/, '').replace(/["《》]/g, '');
+                };
+
+                const handleFileChange = (event) => {
+                    selectedFile.value = event.target.files[0];
+                };
+
+                // 核心：使用 FormData 发送请求（支持文件）
+                const sendRequest = async (endpoint, formData) => {
+                    const res = await fetch(`${BACKEND_URL}/${endpoint}`, {
+                        method: 'POST',
+                        body: formData // 不需要手动设置 Content-Type
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || "请求失败");
+                    return data;
+                };
+
+                const generateTitles = async () => {
+                    if (!apiKey.value) return alert('请先填写 API Key');
+                    loading.value = true;
+                    try {
+                        const fd = new FormData();
+                        fd.append('api_key', apiKey.value);
+                        fd.append('subject', subject.value || '无主题'); // 防止空主题
+                        fd.append('style_key', selectedStyle.value);
+                        fd.append('model_key', selectedModel.value);
+                        fd.append('creativity', creativity.value);
+                        if (selectedFile.value) fd.append('file', selectedFile.value);
+
+                        const data = await sendRequest('generate_titles', fd);
+                        generatedTitles.value = data.titles;
+                    } catch (e) {
+                        alert("报错了: " + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const generateContent = async () => {
+                    if (!apiKey.value) return alert('请先填写 API Key');
+                    if (!targetTitle.value) return alert('请填写或选择一个标题');
+                    contentLoading.value = true;
+                    try {
+                        const fd = new FormData();
+                        fd.append('api_key', apiKey.value);
+                        fd.append('title', targetTitle.value);
+                        fd.append('content_type', contentType.value);
+                        fd.append('style_key', selectedStyle.value);
+                        fd.append('model_key', selectedModel.value);
+                        fd.append('video_length', videoLength.value);
+                        fd.append('creativity', creativity.value);
+                        if (selectedFile.value) fd.append('file', selectedFile.value); // 再次发送文件作为参考
+
+                        const data = await sendRequest('generate_content', fd);
+                        finalContent.value = data.content;
+                    } catch (e) {
+                        alert("报错了: " + e.message);
+                    } finally {
+                        contentLoading.value = false;
+                    }
+                };
+
+                return {
+                    apiKey, showKey, subject, styles, models, trends,
+                    selectedStyle, selectedModel, videoLength, creativity, contentType,
+                    loading, titleList, generateTitles, copyTitle,
+                    targetTitle, contentLoading, finalContent, generateContent, parsedContent,
+                    selectedFile, handleFileChange
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

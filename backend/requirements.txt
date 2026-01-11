@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+langchain
+langchain-openai
+requests
+beautifulsoup4
+python-docx
+pypdf
+python-multipart
