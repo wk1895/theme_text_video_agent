@@ -2,6 +2,8 @@ fastapi
 uvicorn
 pydantic
 langchain
+langchain-core
+langchain-community
 langchain-openai
 requests
 beautifulsoup4
