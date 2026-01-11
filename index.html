@@ -202,7 +202,11 @@
 
         createApp({
             setup() {
-                const BACKEND_URL = "https://theme-text-video-agent.onrender.com"; 
+                const BACKEND_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                    ? "http://127.0.0.1:8000"  // 本地开发环境
+                    : "https://theme-text-video-agent.onrender.com"; // 生产环境
+
+                console.log("当前环境后端地址:", BACKEND_URL);
                 
                 const showKey = ref(false);
                 const apiKey = ref('');
